@@ -1,0 +1,77 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<beans xmlns="http://www.springframework.org/schema/beans"
+       xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+       xsi:schemaLocation="http://www.springframework.org/schema/beans http://www.springframework.org/schema/beans/spring-beans.xsd">
+
+
+    <!--配置 job
+    一般都是 为 每个job 都单独配置 jobDetail 和 触发器，再让 调度器来调度。
+    方便扩展和维护，缺点是 配置文件会比较多。
+    通过 xml 的方式 实现多任务 会比较方便。
+    xml 的有点的 可插拔，假设有个 单独的 任务调度系统在运行，有个 三方的任务需要集成：如 发送 短信。
+    这时 加入相关的三方jar ，只需要下面的配置 步骤 就可以 将任务 集成。
+    当然这种方式要求 你的 任务 不和业务耦合,会非常方便。
+
+    可以 持久化到 数据库，做成一个 任务调度系统，扩展性也比较好，
+    如果 是 java 代码的方式的话，只有通过编码的方式来 集成，这种也可以。
+    -->
+    <bean id="testJob" class="com.swust.quartz.TestJob"/>
+    <bean id="testJob2" class="com.swust.quartz.TestJob2"/>
+
+    <bean id ="jobDetail-testJob" class="org.springframework.scheduling.quartz.MethodInvokingJobDetailFactoryBean">
+        <!--配置 quartz 需要执行的job 对应的类-->
+        <property name="targetObject" ref="testJob"/>
+        <!--具体的job 方法
+         也就是说 quartz 框架执行的是 自定义的 com.swust.quartz.TestJob 中的 job() 方法。
+        -->
+        <property name="targetMethod" value="job"/>
+    </bean>
+
+    <bean id ="jobDetail-testJob2" class="org.springframework.scheduling.quartz.MethodInvokingJobDetailFactoryBean">
+        <!--配置 quartz 需要执行的job 对应的类-->
+        <property name="targetObject" ref="testJob2"/>
+        <!--具体的job 方法
+         也就是说 quartz 框架执行的是 自定义的 com.swust.quartz.TestJob 中的 job() 方法。
+        -->
+        <property name="targetMethod" value="job2"/>
+    </bean>
+
+    <!--配置定时器(触发器)-->
+    <bean id="cronTrigger-testJob" class="org.springframework.scheduling.quartz.CronTriggerFactoryBean">
+        <!--定时器 绑定 任务-->
+        <property name="jobDetail" ref="jobDetail-testJob"/>
+        <!--每5s 执行一次-->
+        <property name="cronExpression">
+            <value>*/5 * * * * ?</value>
+        </property>
+    </bean>
+
+    <!--配置定时器(触发器)-->
+    <bean id="cronTrigger-testJob2" class="org.springframework.scheduling.quartz.CronTriggerFactoryBean">
+        <!--定时器 绑定 任务-->
+        <property name="jobDetail" ref="jobDetail-testJob2"/>
+        <!--每5s 执行一次-->
+        <property name="cronExpression">
+            <value>*/5 * * * * ?</value>
+        </property>
+    </bean>
+
+    <bean id="jobFactory" class="com.swust.quartz.JobFactory"/>
+
+    <!--配置调度器
+     autowire="no" 关闭自动注入，防止依赖破坏
+     lazy-init="false" 关闭懒加载，即应用启动开始执行任务。
+    -->
+    <bean id="scheduler"  lazy-init="false" autowire="no" class="org.springframework.scheduling.quartz.SchedulerFactoryBean">
+        <property name="jobFactory" ref="jobFactory"/>
+        <!--在 调度器中 配置 需要执行job 的触发器
+        可以多个 ，所以可以实现多任务。
+        -->
+        <property name="triggers">
+            <list>
+                <ref bean="cronTrigger-testJob"/>
+                <ref bean="cronTrigger-testJob2"/>
+            </list>
+        </property>
+    </bean>
+</beans>
